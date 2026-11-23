@@ -1,0 +1,1 @@
+import "./globals.css"; import type { Metadata } from "next"; export const metadata:Metadata={title:"FinCore | Simulated Finance Platform",description:"Educational digital wallet and ledger platform"}; export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body>{children}</body></html>}

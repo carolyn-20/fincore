@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: fincore
+      POSTGRES_PASSWORD: fincore_dev_password
+      POSTGRES_DB: fincore
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fincore -d fincore"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redisdata:/data"]
+    networks: [internal]
+  api:
+    build: ./apps/api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://fincore:fincore_dev_password@postgres:5432/fincore
+      REDIS_URL: redis://redis:6379
+      RISK_SERVICE_URL: http://risk-service:8000
+    ports: ["4000:4000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [internal]
+  risk-service:
+    build: ./apps/risk-service
+    ports: ["8000:8000"]
+    networks: [internal]
+  web:
+    build: ./apps/web
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+    ports: ["3000:3000"]
+    depends_on: [api]
+    networks: [internal]
+volumes:
+  pgdata:
+  redisdata:
+networks:
+  internal:
+    driver: bridge

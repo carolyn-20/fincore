@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS users (
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email TEXT UNIQUE NOT NULL, full_name TEXT NOT NULL,
+ password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'customer' CHECK(role IN ('customer','support_agent','operations_analyst','finance_admin','platform_admin')),
+ status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','locked')), created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS wallets (
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES users(id), currency CHAR(3) NOT NULL DEFAULT 'INR',
+ status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','frozen')), created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(user_id,currency)
+);
+CREATE TABLE IF NOT EXISTS beneficiaries (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), owner_user_id UUID NOT NULL REFERENCES users(id), beneficiary_user_id UUID NOT NULL REFERENCES users(id), nickname TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(owner_user_id,beneficiary_user_id));
+CREATE TABLE IF NOT EXISTS transfers (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), from_wallet_id UUID NOT NULL REFERENCES wallets(id), to_wallet_id UUID NOT NULL REFERENCES wallets(id), amount NUMERIC(20,2) NOT NULL CHECK(amount > 0), currency CHAR(3) NOT NULL, status TEXT NOT NULL CHECK(status IN ('pending','posted','failed','reversed')), idempotency_key TEXT NOT NULL UNIQUE, description TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS ledger_entries (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), transfer_id UUID REFERENCES transfers(id), wallet_id UUID NOT NULL REFERENCES wallets(id), entry_type TEXT NOT NULL CHECK(entry_type IN ('debit','credit')), amount NUMERIC(20,2) NOT NULL CHECK(amount > 0), currency CHAR(3) NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS idx_ledger_wallet_created ON ledger_entries(wallet_id,created_at DESC);
+CREATE TABLE IF NOT EXISTS payment_intents (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES users(id), wallet_id UUID NOT NULL REFERENCES wallets(id), amount NUMERIC(20,2) NOT NULL CHECK(amount > 0), currency CHAR(3) NOT NULL, status TEXT NOT NULL DEFAULT 'created', provider TEXT NOT NULL DEFAULT 'local-test-adapter', provider_reference TEXT UNIQUE, idempotency_key TEXT NOT NULL UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS provider_events (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), provider_event_id TEXT UNIQUE NOT NULL, event_type TEXT NOT NULL, payload JSONB NOT NULL, processed_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS disputes (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID NOT NULL REFERENCES users(id), transfer_id UUID NOT NULL REFERENCES transfers(id), reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','investigating','resolved','rejected')), resolution TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS audit_logs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), actor_user_id UUID REFERENCES users(id), action TEXT NOT NULL, entity_type TEXT NOT NULL, entity_id TEXT, metadata JSONB NOT NULL DEFAULT '{}', request_id TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS risk_alerts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID REFERENCES users(id), transfer_id UUID REFERENCES transfers(id), risk_score NUMERIC(5,2) NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at TIMESTAMPTZ NOT NULL DEFAULT now());

@@ -1,0 +1,10 @@
+import 'dotenv/config';
+import express from 'express'; import cors from 'cors'; import helmet from 'helmet';
+import routes from './routes.js';
+const app=express(); app.use(helmet()); app.use(cors({origin:process.env.WEB_ORIGIN||'http://localhost:3000'})); app.use(express.json({limit:'256kb'}));
+app.use((req,res,next)=>{req.requestId=req.headers['x-request-id']||crypto.randomUUID();res.setHeader('x-request-id',req.requestId);next();});
+app.use('/api/v1',routes); app.get('/health',(_q,s)=>s.json({status:'ok'}));
+app.use((err,_req,res,_next)=>{const status=err.status|| (err.name==='ZodError'?400:500);console.error(JSON.stringify({level:'error',message:err.message,status}));res.status(status).json({error:{message:status===500?'Internal server error':err.message,requestId:_req.requestId}});});
+import crypto from 'node:crypto';
+const server=app.listen(Number(process.env.PORT||4000),'0.0.0.0',()=>console.log(`FinCore API listening on ${process.env.PORT||4000}`));
+process.on('SIGTERM',()=>server.close(()=>process.exit(0)));
