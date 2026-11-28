@@ -6,4 +6,4 @@ COPY src ./src
 COPY test ./test
 USER node
 EXPOSE 4000
-CMD ["sh","-c","node src/db/migrate.js && node src/server.js"]
+CMD ["sh","-c","node src/db/migrate.js && node src/db/seed.js && node src/server.js"]
