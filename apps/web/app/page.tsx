@@ -2,7 +2,7 @@
 import {useEffect,useState} from "react";
 type Wallet={id:string;currency:string;balance:string;status:string};
 type User={email:string;fullName:string;role:string};
-const API=process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000/api/v1";
+const API=`${process.env.NEXT_PUBLIC_API_URL||"http://localhost:4000"}/api/v1`;
 export default function Home(){
  const [email,setEmail]=useState("customer@fincore.test"),[password,setPassword]=useState("DemoPass123!"),[token,setToken]=useState(""),[user,setUser]=useState<User|null>(null),[wallets,setWallets]=useState<Wallet[]>([]),[recipient,setRecipient]=useState("ops@fincore.test"),[amount,setAmount]=useState("100.00"),[message,setMessage]=useState(""),[busy,setBusy]=useState(false);
  async function request(path:string,opts:RequestInit={}){const res=await fetch(`${API}${path}`,{...opts,headers:{"Content-Type":"application/json",...(token?{Authorization:`Bearer ${token}`} : {}),...(opts.headers||{})}});const data=await res.json();if(!res.ok)throw new Error(data.error?.message||"Request failed");return data;}
